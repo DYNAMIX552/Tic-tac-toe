@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe</title>
+    <style>
+        body {
+            background: linear-gradient(45deg, #ff6b6b, #1e90ff);
+            text-align: center;
+            color: white;
+            font-family: Arial, sans-serif;
+            transition: background 0.5s ease;
+        }
+        h1 { margin-top: 10px; }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 5px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .cell {
+            width: 100px;
+            height: 100px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        .cell:hover { background-color: rgba(255, 255, 255, 0.3); }
+        .buttons { margin: 10px; }
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            margin: 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+        }
+        .play-friend { background-color: #1abc9c; color: white; }
+        .play-bot { background-color: #e74c3c; color: white; }
+        .reset { background-color: #3498db; color: white; }
+        .score-level {
+            margin: 15px 0;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Tic-Tac-Toe</h1>
+    <div class="buttons">
+        <button class="play-friend" onclick="startGame('friend')">Play with Friend</button>
+        <button class="play-bot" onclick="startGame('bot')">Play with Bot</button>
+        <button class="reset" onclick="resetGame()">Reset</button>
+    </div>
+    
+    <div class="score-level">
+        <p>Player X: <span id="scoreX">0</span> | Player O: <span id="scoreO">0</span></p>
+        <p>Level: <span id="level">1</span></p>
+    </div>
+
+    <div class="board" id="board"></div>
+    <h2 id="status"></h2>
+
+    <audio id="bg-music" loop>
+        <source src="https://www.soundjay.com/background-music/small-room-piano.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="move-sound">
+        <source src="https://www.soundjay.com/button/beep-07.wav" type="audio/wav">
+    <audio id="win-sound">
+        <source src="https://www.soundjay.com/button/beep-10.wav" type="audio/wav">
+    </audio>
+
+    <script>
+        let board = ["", "", "", "", "", "", "", "", ""];
+        let currentPlayer = "X";
+        let gameActive = false;
+        let gameMode = "friend";
+        let scoreX = 0, scoreO = 0, level = 1;
+
+        function startGame(mode) {
+            gameMode = mode;
+            resetGame();
+            gameActive = true;
+            document.getElementById("status").innerText = `Player ${currentPlayer}'s Turn`;
+            document.getElementById("bg-music").play();
+        }
+
+        function handleCellClick(index) {
+            if (!gameActive || board[index] !== "") return;
+            
+            board[index] = currentPlayer;
+            document.getElementById("move-sound").play();
+            renderBoard();
+            
+            if (checkWinner()) {
+                document.getElementById("status").innerText = `Player ${currentPlayer} Wins!`;
+                document.getElementById("win-sound").play();
+                updateScore(currentPlayer);
+                gameActive = false;
+                increaseLevel();
+                return;
+            } else if (!board.includes("")) {
+                document.getElementById("status").innerText = "It's a Draw!";
+                gameActive = false;
+                return;
+            }
+
+            currentPlayer = currentPlayer === "X" ? "O" : "X";
+            document.getElementById("status").innerText = `Player ${currentPlayer}'s Turn`;
+
+            if (gameMode === "bot" && currentPlayer === "O") {
+                setTimeout(botMove, 500.);
+            }
+        }
+
+        function botMove() {
+            let emptyCells = board.map((val, idx) => val === "" ? idx : null).filter(v => v !== null);
+            
+            let move;
+            if (level === 1) {
+                move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            } else if (level === 2) {
+                move = findBestMove("X") || emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            } else {
+                move = findBestMove("O") || findBestMove("X") || emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            }
+
+            handleCellClick(move);
+        }
+
+        function findBestMove(player) {
+            for (let pattern of [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]]) {
+                let [a, b, c] = pattern;
+                if (board[a] === player && board[b] === player && board[c] === "") return c;
+                if (board[a] === player && board[c] === player && board[b] === "") return b;
+                if (board[b] === player && board[c] === player && board[a] === "") return a;
+            }
+            return null;
+        }
+
+        function checkWinner() {
+            return [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]]
+                .some(pattern => {
+                    let [a, b, c] = pattern;
+                    return board[a] && board[a] === board[b] && board[a] === board[c];
+                });
+        }
+
+        function updateScore(player) {
+            if (player === "X") {
+                scoreX++;
+                document.getElementById("scoreX").innerText = scoreX;
+            } else {
+                scoreO++;
+                document.getElementById("scoreO").innerText = scoreO;
+            }
+        }
+
+        function increaseLevel() {
+            if (gameMode === "bot") {
+                level++;
+                document.getElementById("level").innerText = level;
+            }
+        }
+
+        function renderBoard() {
+            const boardElement = document.getElementById("board");
+            boardElement.innerHTML = "";
+            board.forEach((cell, index) => {
+                const cellDiv = document.createElement("div");
+                cellDiv.classList.add("cell");
+                cellDiv.innerText = cell;
+                cellDiv.onclick = () => handleCellClick(index);
+                boardElement.appendChild(cellDiv);
+            });
+        }
+
+        function resetGame() {
+            board = ["", "", "", "", "", "", "", "", ""];
+            currentPlayer = "X";
+            gameActive = false;
+            renderBoard();
+            document.getElementById("status").innerText = "";
+        }
+
+        renderBoard();
+    </script>
+
+</body>
+</html> 
